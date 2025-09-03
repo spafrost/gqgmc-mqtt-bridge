@@ -244,7 +244,7 @@ mqtt:
 
 ### Example Request
 ```http
-GET /?AID=USER1&GID=GMC1&CPM=42&ACPM=38.5&uSV=0.15&AID=AREA1 HTTP/1.1
+GET /?AID=USER1&GID=GMC1&CPM=42&ACPM=38.5&uSV=0.15 HTTP/1.1
 ```
 
 ### Successful Response
