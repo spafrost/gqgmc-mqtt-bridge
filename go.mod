@@ -1,6 +1,6 @@
 module gqgmc-mqtt-bridge
 
-go 1.20
+go 1.25
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
