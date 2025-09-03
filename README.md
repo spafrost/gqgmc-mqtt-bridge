@@ -1,10 +1,20 @@
-# HTTP to MQTT Bridge for GQ GMC series geiger counters with WiFi
 
-HTTP to MQTT bridge that emulates the GQ Electronics GMC series geiger counter reporting endpoint used for their crowd sourced radiation map, enabling private data collection for home automation and monitoring systems.
+> **🤖AI AUTHORED SOFTWARE WARNING🤖**
+> 
+> **A lot of this project, including all source code and documentation, was created using artificial intelligence assistance.**
+> 
+> **⚠️ CRITICAL SAFETY REMINDER:**
+> - **Review all code thoroughly** before deploying in any environment
+> - **Test extensively** with your specific hardware configuration  
+> - **Verify security measures** are appropriate for your use case
+> - **Radiation monitoring is safety-critical** - validate data accuracy independently
+> - **No warranties or guarantees given or implied** for any code in this repository.
+> 
+> **Use at your own risk. The author(s) assume no responsibility for any issues, data loss, security vulnerabilities, or safety concerns that may arise from using this AI-generated software.**
 
 ## Overview
 
-This service acts as an HTTP server that mimics the endpoint used by GQ GMC series geiger counters with WiFi capability to report their radiation readings to the online map. 
+HTTP to MQTT bridge that emulates the GQ Electronics GMC series geiger counter reporting endpoint used for their crowd sourced radiation map, enabling private data collection for home automation and monitoring systems.
 
 Instead of sending data to the manufacturer's cloud service, you can configure your geiger counter to report to this local endpoint, which will forward the readings to your chosen MQTT broker.
 
