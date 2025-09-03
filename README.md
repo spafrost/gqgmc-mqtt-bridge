@@ -40,7 +40,7 @@ Instead of sending data to the manufacturer's cloud service, you can configure y
 
 > **Help Expand Compatibility:** If you successfully test this with other GMC models, please report your results to help improve this compatibility table.
 
-> **Reference:** [GQ Electronics GMC Series](https://www.gqelectronicsllc.com/comersus/store/comersus_listItems.asp?idCategory=2) geiger counters support WiFi data logging to custom servers.
+> **Reference:** [Some GQ Electronics GMC Series](https://www.gqelectronicsllc.com/comersus/store/download.asp) geiger counters support WiFi data logging that can be configured to send data to custom servers.
 
 ## How It Works
 
@@ -108,7 +108,7 @@ Access your GMC device's WiFi settings via the **"Server"** option int he main m
 - **Counter ID:** `this-will-be-the-GID-value` 
 - **Period:** `60` seconds (recommended)
 
-> **Reference:** See [GMC WiFi Setup Guide](https://www.gqelectronicsllc.com/GMC_Data_logging.htm) for detailed configuration instructions.
+> **Reference:** See [your counters manual](https://www.gqelectronicsllc.com/comersus/store/download.asp) for detailed configuration instructions.
 
 ### 3. Multiple Device Setup
 
@@ -286,7 +286,6 @@ mosquitto_sub -h your-broker -t "radiation/+/CPM"
 
 ## References
 
-- [GQ Electronics GMC Series](https://www.gqelectronicsllc.com/comersus/store/comersus_listItems.asp?idCategory=2) - Official product pages
-- [GMC WiFi Data Logging Guide](https://www.gqelectronicsllc.com/GMC_Data_logging.htm) - Configuration instructions
-- [GQ User Manual Downloads](https://www.gqelectronicsllc.com/GQ-RFC1201.htm) - Technical documentation
+- [GQ Electronics GMC Series](https://www.gqelectronicsllc.com/comersus/store/LeftStart.asp?idCategory=50) - Official product pages
+- [GQ User Manual Downloads](https://www.gqelectronicsllc.com/comersus/store/download.asp) - Technical documentation
 
