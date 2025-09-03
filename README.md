@@ -181,47 +181,19 @@ mqtt:
     - name: "Living Room Geiger CPM"
       state_topic: "radiation/GMC1/CPM"
       unit_of_measurement: "CPM"
-      device_class: "frequency"
       
     - name: "Living Room Radiation Level"  
       state_topic: "radiation/GMC1/uSV"
       unit_of_measurement: "μSv/h"
-      device_class: "radiation"
       
     # Device 2 - Basement Counter  
     - name: "Basement Geiger CPM"
       state_topic: "radiation/GMC2/CPM"
       unit_of_measurement: "CPM"
-      device_class: "frequency"
       
     - name: "Basement Radiation Level"
       state_topic: "radiation/GMC2/uSV"
       unit_of_measurement: "μSv/h"
-      device_class: "radiation"
-
-    # Or use wildcards to auto-discover all devices
-    - name: "All Geiger Counter Data"
-      state_topic: "radiation/+/CPM"
-      unit_of_measurement: "CPM"
-      device_class: "frequency"
-```
-
-### Node-RED Flow
-
-**Multiple Device Processing:** Import this flow to process radiation data from multiple devices:
-
-```json
-[{
-  "id": "radiation-input",
-  "type": "mqtt in", 
-  "topic": "radiation/+/+",
-  "broker": "your-broker",
-  "name": "All Radiation Data"
-}, {
-  "id": "device-parser",
-  "type": "function",
-  "code": "const topicParts = msg.topic.split('/');\nconst deviceId = topicParts[1];\nconst parameter = topicParts[2];\n\nmsg.deviceId = deviceId;\nmsg.parameter = parameter;\nmsg.value = msg.payload;\n\nreturn msg;"
-}]
 ```
 
 **Topic structure parsed:**
