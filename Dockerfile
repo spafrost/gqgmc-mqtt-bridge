@@ -31,7 +31,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 FROM gcr.io/distroless/static-debian11
 
 # Add labels for security and maintenance
-LABEL version="1.0" \
+LABEL version="1.1" \
       description="HTTP to MQTT bridge for Wifi connected GMC GQ geiger counters"
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo

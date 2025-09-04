@@ -11,7 +11,7 @@ GO_FILES=$(wildcard *.go)
 GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD 2>nul || echo unknown)
 GIT_COMMIT=$(shell git rev-parse --short HEAD 2>nul || echo unknown)
 BUILD_TIME=$(shell powershell -Command "[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')")
-VERSION=1.0.0
+VERSION=1.1.0
 
 # Docker repository logic based on branch (using variables from .makerc)
 ifeq ($(GIT_BRANCH),main)
