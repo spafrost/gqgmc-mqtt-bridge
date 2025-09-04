@@ -17,6 +17,14 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// Build information - set via ldflags during build
+var (
+	GitBranch = "unknown"
+	GitCommit = "unknown"
+	BuildTime = "unknown"
+	Version   = "dev"
+)
+
 // Health check function
 func healthCheck() bool {
 	client := &http.Client{
@@ -421,6 +429,7 @@ func main() {
 	}()
 
 	go func() {
+		log.Printf("gqgmc-mqtt-bridge %s (branch: %s, commit: %s, built: %s)", Version, GitBranch, GitCommit, BuildTime)
 		log.Printf("starting HTTP server on %s, mqtt broker %s, topic %s", server.Addr, broker, topic)
 		log.Printf("security: rate limit 10 req/sec, max 5 params, allowed keys: GID, CPM, ACPM, uSV, AID")
 		log.Printf("parameter types: GID=text/numeric(max 50 chars), CPM=integer, ACPM=float, uSV=float, AID=alphanumeric(max 50 chars)")
