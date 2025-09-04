@@ -87,6 +87,18 @@ docker-build:
 .PHONY: docker-push
 docker-push: docker-build
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+ifeq ($(GIT_BRANCH),main)
+	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_IMAGE):latest
+	docker push $(DOCKER_IMAGE):latest
+endif
+
+# Manually promote a specific version to latest (emergency use)
+.PHONY: docker-promote-latest
+docker-promote-latest:
+	@echo "Promoting $(DOCKER_IMAGE):$(VERSION) to latest..."
+	docker pull $(DOCKER_IMAGE):$(VERSION)
+	docker tag $(DOCKER_IMAGE):$(VERSION) $(DOCKER_IMAGE):latest
+	docker push $(DOCKER_IMAGE):latest
 
 # Show Docker repository information
 .PHONY: docker-info

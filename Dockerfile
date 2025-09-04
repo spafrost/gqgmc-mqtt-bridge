@@ -30,8 +30,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # Use distroless image for better security
 FROM gcr.io/distroless/static-debian11
 
+# Re-declare build args for use in final stage
+ARG VERSION=dev
+
 # Add labels for security and maintenance
-LABEL version="1.1" \
+LABEL version="${VERSION}" \
       description="HTTP to MQTT bridge for Wifi connected GMC GQ geiger counters"
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
