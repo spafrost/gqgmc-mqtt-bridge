@@ -38,6 +38,9 @@ Thumbs.db
 .env
 .env.*
 
+# Makefile secrets (contains Docker repository names)
+.makerc
+
 # Logs
 *.log
 logs/

@@ -1,5 +1,11 @@
 FROM golang:1-alpine AS builder
 
+# Build arguments for version information
+ARG GIT_BRANCH=unknown
+ARG GIT_COMMIT=unknown  
+ARG BUILD_TIME=unknown
+ARG VERSION=dev
+
 RUN apk --no-cache --no-progress add git ca-certificates tzdata make \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
@@ -16,7 +22,10 @@ RUN GO111MODULE=on GOPROXY=https://proxy.golang.org go mod download
 
 COPY . .
 
-RUN make build
+# Build with version information using build args instead of git commands
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags "-X main.GitBranch=${GIT_BRANCH} -X main.GitCommit=${GIT_COMMIT} -X main.BuildTime=${BUILD_TIME} -X main.Version=${VERSION}" \
+    -a -installsuffix cgo -o gqgmc-mqtt-bridge .
 
 # Use distroless image for better security
 FROM gcr.io/distroless/static-debian11

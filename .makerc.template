@@ -1,0 +1,4 @@
+# Docker repository configuration template
+# Copy this file to .makerc and customize for your environment
+PROD_DOCKER_REPO=your-dockerhub-username
+DEV_DOCKER_REPO=your-private-registry.com
