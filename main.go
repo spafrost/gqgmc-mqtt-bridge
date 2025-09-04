@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -37,6 +38,93 @@ func healthCheck() bool {
 
 // Rate limiter: 10 requests per second, burst of 100
 var limiter = rate.NewLimiter(10, 100)
+
+// Device health monitoring - will be configured from environment variables
+var (
+	offlineThreshold time.Duration
+	checkFrequency   time.Duration
+)
+
+type deviceStatus struct {
+	lastSeen time.Time
+	isOnline bool
+}
+
+var (
+	deviceStates = make(map[string]*deviceStatus)
+	deviceMutex  sync.RWMutex
+)
+
+// Update device status and publish status changes
+func updateDeviceStatus(client mqtt.Client, deviceID, baseTopic string) {
+	now := time.Now()
+
+	deviceMutex.Lock()
+	defer deviceMutex.Unlock()
+
+	// Get or create device status
+	status, exists := deviceStates[deviceID]
+	if !exists {
+		status = &deviceStatus{
+			lastSeen: now,
+			isOnline: true,
+		}
+		deviceStates[deviceID] = status
+
+		// Publish initial online status
+		statusTopic := baseTopic + "/" + deviceID + "/status"
+		if isValidMqttTopic(statusTopic) {
+			token := client.Publish(statusTopic, 0, true, "online") // retained message
+			token.WaitTimeout(5 * time.Second)
+			if token.Error() != nil {
+				log.Printf("failed to publish online status for device %s: %v", deviceID, token.Error())
+			} else {
+				log.Printf("device %s marked as online", deviceID)
+			}
+		}
+	} else {
+		// Update last seen time
+		status.lastSeen = now
+
+		// If device was offline, mark it online and publish status
+		if !status.isOnline {
+			status.isOnline = true
+			statusTopic := baseTopic + "/" + deviceID + "/status"
+			if isValidMqttTopic(statusTopic) {
+				token := client.Publish(statusTopic, 0, true, "online") // retained message
+				token.WaitTimeout(5 * time.Second)
+				if token.Error() != nil {
+					log.Printf("failed to publish online status for device %s: %v", deviceID, token.Error())
+				} else {
+					log.Printf("device %s came back online", deviceID)
+				}
+			}
+		}
+	}
+}
+
+// Check for offline devices and publish status updates
+func checkOfflineDevices(client mqtt.Client, baseTopic string) {
+	deviceMutex.Lock()
+	defer deviceMutex.Unlock()
+
+	now := time.Now()
+	for deviceID, status := range deviceStates {
+		if status.isOnline && now.Sub(status.lastSeen) > offlineThreshold {
+			status.isOnline = false
+			statusTopic := baseTopic + "/" + deviceID + "/status"
+			if isValidMqttTopic(statusTopic) {
+				token := client.Publish(statusTopic, 0, true, "offline") // retained message
+				token.WaitTimeout(5 * time.Second)
+				if token.Error() != nil {
+					log.Printf("failed to publish offline status for device %s: %v", deviceID, token.Error())
+				} else {
+					log.Printf("device %s marked as offline (last seen: %v)", deviceID, status.lastSeen.Format(time.RFC3339))
+				}
+			}
+		}
+	}
+}
 
 // Validate MQTT topic names to prevent injection
 func isValidMqttTopic(topic string) bool {
@@ -135,14 +223,15 @@ func geigerCounterHandler(client mqtt.Client, topic string) http.HandlerFunc {
 		// collect GET params
 		params := r.URL.Query()
 
-		// Check if this is a health check (localhost with no params)
-		isHealthCheck := (strings.Contains(r.RemoteAddr, "127.0.0.1") || strings.Contains(r.RemoteAddr, "[::1]")) && len(params) == 0
-
-		// Log connection for monitoring (skip health checks to avoid spam)
-		if !isHealthCheck {
-			log.Printf("connection from %s to %s with %d params",
-				r.RemoteAddr, r.URL.Path, len(params))
+		// Early return for health checks (localhost with no params) - don't process MQTT publishing or logging
+		if (strings.Contains(r.RemoteAddr, "127.0.0.1") || strings.Contains(r.RemoteAddr, "[::1]")) && len(params) == 0 {
+			fmt.Fprint(w, "HEALTHY")
+			return
 		}
+
+		// Log connection for monitoring (health checks already filtered out above)
+		log.Printf("connection from %s to %s with %d params",
+			r.RemoteAddr, r.URL.Path, len(params))
 
 		// Validate number of parameters
 		if len(params) > 5 {
@@ -178,6 +267,12 @@ func geigerCounterHandler(client mqtt.Client, topic string) http.HandlerFunc {
 			deviceID = gidValues[0]
 		}
 
+		// Update device status (online/offline tracking)
+		updateDeviceStatus(client, deviceID, topic)
+
+		// Get current timestamp for this update
+		now := time.Now()
+
 		for paramName, values := range params {
 			for _, value := range values {
 				// Create device-specific topic structure: base_topic/device_id/parameter
@@ -196,6 +291,20 @@ func geigerCounterHandler(client mqtt.Client, topic string) http.HandlerFunc {
 				} else {
 					log.Printf("published to topic %s: %s", subTopic, value)
 				}
+			}
+		}
+
+		// Publish the current timestamp for this device update
+		timestampTopic := topic + "/" + deviceID + "/last_update"
+		if isValidMqttTopic(timestampTopic) {
+			// Format timestamp as RFC3339 (ISO 8601) for better readability
+			timestampValue := now.Format(time.RFC3339)
+			token := client.Publish(timestampTopic, 0, false, timestampValue)
+			token.WaitTimeout(5 * time.Second)
+			if token.Error() != nil {
+				log.Printf("failed to publish timestamp to mqtt topic %s: %v", timestampTopic, token.Error())
+			} else {
+				log.Printf("published timestamp to topic %s: %s", timestampTopic, timestampValue)
 			}
 		}
 
@@ -230,6 +339,31 @@ func main() {
 	}
 	username := os.Getenv("MQTT_USERNAME")
 	password := os.Getenv("MQTT_PASSWORD")
+
+	// Device monitoring configuration via env vars
+	offlineThresholdStr := os.Getenv("OFFLINE_THRESHOLD_MINUTES")
+	if offlineThresholdStr == "" {
+		offlineThreshold = 30 * time.Minute // default 30 minutes
+	} else {
+		if minutes, err := time.ParseDuration(offlineThresholdStr + "m"); err != nil {
+			log.Printf("Invalid OFFLINE_THRESHOLD_MINUTES '%s', using default 30 minutes", offlineThresholdStr)
+			offlineThreshold = 30 * time.Minute
+		} else {
+			offlineThreshold = minutes
+		}
+	}
+
+	checkFrequencyStr := os.Getenv("CHECK_FREQUENCY_MINUTES")
+	if checkFrequencyStr == "" {
+		checkFrequency = 5 * time.Minute // default 5 minutes
+	} else {
+		if minutes, err := time.ParseDuration(checkFrequencyStr + "m"); err != nil {
+			log.Printf("Invalid CHECK_FREQUENCY_MINUTES '%s', using default 5 minutes", checkFrequencyStr)
+			checkFrequency = 5 * time.Minute
+		} else {
+			checkFrequency = minutes
+		}
+	}
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(broker)
@@ -271,10 +405,26 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	// Start background monitoring for offline devices
+	go func() {
+		ticker := time.NewTicker(checkFrequency)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				checkOfflineDevices(client, topic)
+			case <-sigChan:
+				return // Stop monitoring when shutdown signal received
+			}
+		}
+	}()
+
 	go func() {
 		log.Printf("starting HTTP server on %s, mqtt broker %s, topic %s", server.Addr, broker, topic)
 		log.Printf("security: rate limit 10 req/sec, max 5 params, allowed keys: GID, CPM, ACPM, uSV, AID")
 		log.Printf("parameter types: GID=text/numeric(max 50 chars), CPM=integer, ACPM=float, uSV=float, AID=alphanumeric(max 50 chars)")
+		log.Printf("monitoring: devices marked offline after %v of inactivity, checked every %v", offlineThreshold, checkFrequency)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server failed: %v", err)
 		}
